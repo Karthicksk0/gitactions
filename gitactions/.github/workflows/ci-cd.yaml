@@ -7,32 +7,35 @@ on:
 
 jobs:
   build-deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted   # uses your local runner
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Docker CLI
-      uses: docker/setup-buildx-action@v3
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y conntrack curl
 
-    - name: Configure kubeconfig
-      run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 --decode > $HOME/.kube/config
+      - name: Set up Docker CLI (optional if Docker is already installed)
+        run: |
+          echo "Docker should already be installed on your runner"
 
-    - name: Use Minikube Docker daemon
-      run: |
-        sudo apt-get update && sudo apt-get install -y conntrack
-        minikube docker-env --shell bash
-        eval $(minikube docker-env)
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 --decode > $HOME/.kube/config
 
-    - name: Build Docker image
-      run: |
-        docker build -t demo-app:latest .
+      - name: Build Docker image
+        run: |
+          docker build -t demo-app:latest .
 
-    - name: Deploy to Minikube
-      run: |
-        kubectl apply -f k8s/deployment.yaml
-        kubectl rollout status deployment/demo-app
+      - name: Deploy to Minikube
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl rollout status deployment/demo-app
+
+      - name: Check deployed pods
+        run: kubectl get pods
 
